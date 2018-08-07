@@ -8,8 +8,6 @@ endif()
 option(USE_PKCS11_HELPER_LIBRARY "Build mbed TLS with the pkcs11-helper library." OFF)
 option(ENABLE_ZLIB_SUPPORT "Build mbed TLS with zlib library." OFF)
 
-option(ENABLE_PROGRAMS "Build mbed TLS programs." ON)
-
 option(UNSAFE_BUILD "Allow unsafe builds. These builds ARE NOT SECURE." OFF)
 
 string(REGEX MATCH "Clang" CMAKE_COMPILER_IS_CLANG "${CMAKE_C_COMPILER_ID}")
@@ -21,7 +19,7 @@ string(REGEX MATCH "MSVC" CMAKE_COMPILER_IS_MSVC "${CMAKE_C_COMPILER_ID}")
 if(CMAKE_COMPILER_IS_MSVC)
     option(ENABLE_TESTING "Build mbed TLS tests." OFF)
 else()
-    option(ENABLE_TESTING "Build mbed TLS tests." ON)
+    option(ENABLE_TESTING "Build mbed TLS tests." OFF)
 endif()
 
 # Warning string - created as a list for compatibility with CMake 2.8
@@ -69,8 +67,13 @@ set(CMAKE_BUILD_TYPE ${CMAKE_BUILD_TYPE}
 # to the corresponding path in the source directory.
 function(link_to_source base_name)
     # Get OS dependent path to use in `execute_process`
-    file(TO_NATIVE_PATH "${CMAKE_CURRENT_BINARY_DIR}/${base_name}" link)
-    file(TO_NATIVE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/${base_name}" target)
+    if (CMAKE_HOST_WINDOWS OR (CMAKE_SYSTEM_NAME STREQUAL "Windows"))
+        string(REPLACE / \\ link "${CMAKE_CURRENT_BINARY_DIR}/${base_name}")
+        string(REPLACE / \\ target "${CMAKE_CURRENT_SOURCE_DIR}/${base_name}")
+    else()
+        string(REPLACE \\ / link "${CMAKE_CURRENT_BINARY_DIR}/${base_name}")
+        string(REPLACE \\ / target "${CMAKE_CURRENT_SOURCE_DIR}/${base_name}")
+    endif()
 
     if (NOT EXISTS ${link})
         if (CMAKE_HOST_UNIX)
@@ -161,14 +164,6 @@ endif(ENABLE_ZLIB_SUPPORT)
 
 add_subdirectory(library)
 add_subdirectory(include)
-
-if(ENABLE_PROGRAMS)
-    add_subdirectory(programs)
-endif()
-
-ADD_CUSTOM_TARGET(apidoc
-    COMMAND doxygen mbedtls.doxyfile
-    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/doxygen)
 
 if(ENABLE_TESTING)
     enable_testing()
